@@ -546,8 +546,8 @@ class VLLMGeneration:
             and may fall outside the top-N).
         """
         import vllm
-
-        if Version(vllm.__version__) <= Version("0.10.2"):
+        # TODO: change
+        if "GuidedDecodingParams" in dir():
             from vllm.sampling_params import GuidedDecodingParams as StructuredOutputsParams
 
             structured_outputs_key = "guided_decoding"

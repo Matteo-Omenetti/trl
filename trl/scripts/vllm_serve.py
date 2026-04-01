@@ -417,10 +417,15 @@ def main(script_args: ScriptArguments):
     from pydantic import BaseModel
     from vllm import SamplingParams
 
-    if Version(vllm.__version__) <= Version("0.11.0"):
+    # TODO: change
+    try:
         from vllm.utils import get_open_port
-    else:
+    except ImportError:
         from vllm.utils.network_utils import get_open_port
+    # if Version(vllm.__version__) <= Version("0.11.0"):
+    #     from vllm.utils import get_open_port
+    # else:
+    #     from vllm.utils.network_utils import get_open_port
 
     if is_vision_available():
         from PIL import Image
@@ -589,13 +594,19 @@ def main(script_args: ScriptArguments):
         }
         generation_kwargs.update(request.generation_kwargs)
 
-        # Structured outputs, if enabled
-        if Version(vllm.__version__) <= Version("0.10.2"):
+        # TODO: change
+        try:
             from vllm.sampling_params import GuidedDecodingParams as StructuredOutputsParams
-
             structured_outputs_key = "guided_decoding"
-        else:
+        except ImportError:
             from vllm.sampling_params import StructuredOutputsParams
+        # # Structured outputs, if enabled
+        # if Version(vllm.__version__) <= Version("0.10.2"):
+        #     from vllm.sampling_params import GuidedDecodingParams as StructuredOutputsParams
+
+        #     structured_outputs_key = "guided_decoding"
+        # else:
+        #     from vllm.sampling_params import StructuredOutputsParams
 
             structured_outputs_key = "structured_outputs"
         if request.structured_outputs_regex is not None:
@@ -742,12 +753,18 @@ def main(script_args: ScriptArguments):
         generation_kwargs.update(request.generation_kwargs)
 
         # Structured outputs, if enabled
-        if Version(vllm.__version__) <= Version("0.10.2"):
+        # TODO: change
+        try:
             from vllm.sampling_params import GuidedDecodingParams as StructuredOutputsParams
-
             structured_outputs_key = "guided_decoding"
-        else:
+        except ImportError:
             from vllm.sampling_params import StructuredOutputsParams
+        # if Version(vllm.__version__) <= Version("0.10.2"):
+        #     from vllm.sampling_params import GuidedDecodingParams as StructuredOutputsParams
+
+        #     structured_outputs_key = "guided_decoding"
+        # else:
+        #     from vllm.sampling_params import StructuredOutputsParams
 
             structured_outputs_key = "structured_outputs"
         if request.structured_outputs_regex is not None:
