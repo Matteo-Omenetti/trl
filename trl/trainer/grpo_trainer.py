@@ -1638,7 +1638,12 @@ class GRPOTrainer(_BaseTrainer):
             ):
                 completions = [[parse_response(self.processing_class, ids)] for ids in completion_ids]
             else:
-                contents = self.processing_class.batch_decode(completion_ids, skip_special_tokens=True)
+                # TODO: change
+                contents_tmp = self.processing_class.batch_decode(completion_ids, skip_special_tokens=False)
+                contents = []
+                for content in contents_tmp:
+                    content = content.replace(self.eos_token, "").replace(self.pad_token, "")
+                    contents.append(content)
                 completions = [[{"role": "assistant", "content": content}] for content in contents]
         else:
             # TODO: change
@@ -1982,7 +1987,7 @@ class GRPOTrainer(_BaseTrainer):
         for completion in completions_text_tmp:
             completion = completion.replace(self.eos_token, "").replace(self.pad_token, "")
             completions_text.append(completion)
-            
+        
         # Merge extra_fields from rollout_func into inputs for reward functions
         if extra_fields:
             for i, inp in enumerate(inputs):
