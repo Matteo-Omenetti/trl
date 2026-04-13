@@ -333,7 +333,19 @@ class GRPOTrainer(_BaseTrainer):
             tokenizer.pad_token = tokenizer.eos_token
         self.pad_token_id = tokenizer.pad_token_id
         self.eos_token_id = tokenizer.eos_token_id
-
+        # TODO: change
+        self.eos_token = tokenizer.eos_token
+        self.image_token_id = (
+            tokenizer.image_token_id
+            if hasattr(tokenizer, "image_token_id")
+            else tokenizer.convert_tokens_to_ids("<image>")
+        )
+        print("Image token id:", self.image_token_id)
+        assert isinstance(self.image_token_id, int)
+        self.dummy_image_token_id = tokenizer.convert_tokens_to_ids("image")
+        print("Dummy image token id:", self.dummy_image_token_id)
+        assert isinstance(self.dummy_image_token_id, int)
+        
         if is_peft_available() and is_peft_model(model) and peft_config is not None:
             raise ValueError(
                 "You passed a `PeftModel` instance together with a `peft_config` to the trainer. Please first merge "
@@ -1819,10 +1831,22 @@ class GRPOTrainer(_BaseTrainer):
             ):
                 completions = [[parse_response(parsing_class, ids)] for ids in completion_ids]
             else:
-                contents = self.processing_class.batch_decode(completion_ids, skip_special_tokens=True)
+                # contents = self.processing_class.batch_decode(completion_ids, skip_special_tokens=True)
+                # TODO: change
+                contents_tmp = self.processing_class.batch_decode(completion_ids, skip_special_tokens=False)
+                contents = []
+                for content in contents_tmp:
+                    content = content.replace(self.eos_token, "").replace(self.pad_token, "")
+                    contents.append(content)
                 completions = [[{"role": "assistant", "content": content}] for content in contents]
         else:
-            completions = self.processing_class.batch_decode(completion_ids, skip_special_tokens=True)
+            # completions = self.processing_class.batch_decode(completion_ids, skip_special_tokens=True)
+            # TODO: change
+            completions_tmp = self.processing_class.batch_decode(completion_ids, skip_special_tokens=False)
+            completions = []
+            for completion in completions_tmp:
+                completion = completion.replace(self.eos_token, "").replace(self.pad_token, "")
+                completions.append(completion)
 
         # Extract tool calls from the completions and (possibly) execute them
         tool_images = []
@@ -1964,6 +1988,20 @@ class GRPOTrainer(_BaseTrainer):
         if images is None:
             images = dataset_images  # restore dataset images (rollout_func path returns None)
 
+        # TODO: change
+        fixed_completion_ids_list = []
+        for i, comp in enumerate(completion_ids_list):
+            if self.image_token_id in comp:
+                print(
+                    f"--[warn] Replacing {comp.count(self.image_token_id)} image tokens in sample {i}"
+                )
+                comp = [
+                    self.dummy_image_token_id if t == self.image_token_id else t
+                    for t in comp
+                ]
+            fixed_completion_ids_list.append(comp)
+        completion_ids_list = fixed_completion_ids_list
+        
         # Convert lists of token IDs to padded tensors
         prompt_ids = [torch.tensor(ids) for ids in prompt_ids_list]
         prompt_mask = [torch.ones_like(ids, dtype=torch.long) for ids in prompt_ids]
@@ -2212,7 +2250,13 @@ class GRPOTrainer(_BaseTrainer):
 
         # Decode
         prompts_text = self.processing_class.batch_decode(prompt_ids, skip_special_tokens=True)
-        completions_text = self.processing_class.batch_decode(completion_ids, skip_special_tokens=True)
+        # TODO: change
+        #completions_text = self.processing_class.batch_decode(completion_ids, skip_special_tokens=True)
+        completions_text_tmp = self.processing_class.batch_decode(completion_ids, skip_special_tokens=False)
+        completions_text = []
+        for completion in completions_text_tmp:
+            completion = completion.replace(self.eos_token, "").replace(self.pad_token, "")
+            completions_text.append(completion)
 
         # Merge extra_fields from rollout_func into inputs for reward functions
         if extra_fields:
